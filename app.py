@@ -15,6 +15,17 @@ from src.charts import (
     crear_boxplot,
     crear_matriz_correlacion
 )
+from src.insights import (
+    detectar_correlaciones,
+    detectar_outliers_iqr,
+    generar_texto_correlaciones,
+    generar_texto_outliers
+)
+from src.llm import (
+    cargar_api_key_openai,
+    generar_contexto_dataset,
+    responder_pregunta_dataset
+)
 
 
 
@@ -105,3 +116,45 @@ else:
         st.info("Se necesitan al menos dos columnas numericas para calcular la correlacion.")
     else:
         st.pyplot(matriz_correlacion)
+
+
+# Insights automaticos
+st.subheader("Insights automaticos")
+
+correlaciones_fuertes = detectar_correlaciones(df)
+outliers_por_columna = detectar_outliers_iqr(df)
+
+st.write("Correlaciones fuertes")
+st.text(generar_texto_correlaciones(correlaciones_fuertes))
+
+st.write("Valores atipicos")
+st.text(generar_texto_outliers(outliers_por_columna))
+
+
+# Preguntas con OpenAI
+st.subheader("Preguntas sobre el dataset")
+
+api_key = cargar_api_key_openai()
+
+pregunta_dataset = st.text_area(
+    "Escribi una pregunta sobre el dataset cargado"
+)
+
+if st.button("Responder pregunta"):
+    if not api_key:
+        st.warning("No se encontro OPENAI_API_KEY en el archivo .env.")
+    elif not pregunta_dataset.strip():
+        st.warning("Escribi una pregunta antes de consultar.")
+    else:
+        contexto_dataset = generar_contexto_dataset(df)
+
+        with st.spinner("Consultando OpenAI..."):
+            try:
+                respuesta = responder_pregunta_dataset(
+                    pregunta_dataset,
+                    contexto_dataset,
+                    api_key=api_key
+                )
+                st.write(respuesta)
+            except Exception as error:
+                st.error(f"No se pudo obtener una respuesta: {error}")
